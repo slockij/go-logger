@@ -40,6 +40,10 @@ type (
 		f        io.Writer
 		filename string
 	}
+
+	logWrapper struct {
+		logLevel int
+	}
 )
 
 var levels = []string{"FATAL", "ERROR", "WARNING", "INFO", "DEBUG", "DEBUG2"}
@@ -167,5 +171,80 @@ func (l *logHandler) Debug(args ...interface{}) {
 
 //Debug2 - save log message on DEBUG2 level (even more debug)
 func (l *logHandler) Debug2(args ...interface{}) {
+	l.Log(LogDebug2, 3, args...)
+}
+
+//WrapLogger - wraps standard log with interface
+func WrapLogger(logLevel int) Logger {
+	if logLevel > LogDebug {
+		logLevel = LogDebug2
+	}
+	if logLevel < LogFatal {
+		logLevel = LogFatal
+	}
+	return &logWrapper{logLevel}
+}
+
+//GetLogWriter - returns nil as there's no file known
+func (l *logWrapper) GetLogWriter() io.Writer {
+	return nil
+}
+
+//Rotate - reopen file
+func (l *logWrapper) Rotate() {
+	l.Info("Rotate called")
+}
+
+//LogLevel - returns log level
+func (l *logWrapper) LogLevel() int {
+	return l.logLevel
+}
+
+//LogLevelString - returns log level as string
+func (l *logWrapper) LogLevelString() string {
+	return levels[l.logLevel]
+}
+
+//Output - implements output from standard logger
+func (l *logWrapper) Output(calldepth int, s string) error {
+	return log.Output(calldepth+1, s)
+}
+
+//Log - more complex logging method
+func (l *logWrapper) Log(logLevel, depth int, args ...interface{}) {
+	if logLevel <= l.logLevel {
+		args = append([]interface{}{levels[logLevel]}, args...)
+		log.Output(depth, fmt.Sprintln(args...))
+	}
+}
+
+//Fatal - log and panic
+func (l *logWrapper) Fatal(args ...interface{}) {
+	l.Log(LogFatal, 3, args...)
+	panic("Fatal error occured")
+}
+
+//Error - save log message on ERROR level
+func (l *logWrapper) Error(args ...interface{}) {
+	l.Log(LogError, 3, args...)
+}
+
+//Warning - save log message on WARNING level
+func (l *logWrapper) Warning(args ...interface{}) {
+	l.Log(LogWarning, 3, args...)
+}
+
+//Info - save log message on INFO level
+func (l *logWrapper) Info(args ...interface{}) {
+	l.Log(LogInfo, 3, args...)
+}
+
+//Debug - save log message on DEBUG level
+func (l *logWrapper) Debug(args ...interface{}) {
+	l.Log(LogDebug, 3, args...)
+}
+
+//Debug2 - save log message on DEBUG2 level (even more debug)
+func (l *logWrapper) Debug2(args ...interface{}) {
 	l.Log(LogDebug2, 3, args...)
 }
